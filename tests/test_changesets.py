@@ -108,6 +108,21 @@ def test_cast_custom_empty_values():
     ).changes == {"slug": not_empty_value}
 
 
+def test_cast_coerce_isoformatted_date():
+    assert (
+        Changeset(Book()).cast(
+            {"publication_date": date(1990, 1, 1).isoformat()}, ["publication_date"]
+        )
+    ).changes == {"publication_date": date(1990, 1, 1)}
+
+
+def test_cast_coerce_isoformatted_datetime():
+    dt = datetime(2020, 1, 1)
+    assert (
+        Changeset(Book()).cast({"updated_at": dt.isoformat()}, ["updated_at"])
+    ).changes == {"updated_at": dt}
+
+
 def test_put_assoc():
     user = User(id=1, name="Bear")
     changeset = (

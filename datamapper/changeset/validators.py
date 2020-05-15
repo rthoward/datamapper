@@ -1,3 +1,4 @@
+from datetime import date, datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from datamapper.changeset.types import FieldValidator
@@ -19,18 +20,20 @@ def _add_error(errors: Errors, key: str, msg: str) -> Errors:
 
 def validate_types(params: dict, types: dict, data: dict) -> Tuple[dict, dict]:
     errors: dict = {}
-    changes = dict(params)
+    changes: dict = {}
 
     for (key, val) in params.items():
         schema_type = types.get(key)
         if schema_type is None:
-            changes.pop(key)
             continue
 
-        error = _validate_type(schema_type, val)
+        casted_value = _cast_to_schema_type(schema_type, val)
+        error = _validate_type(schema_type, casted_value)
         if error is not None:
             errors = _add_error(errors, key, error)
-            changes.pop(key)
+            continue
+
+        changes[key] = casted_value
 
     return (changes, errors)
 
@@ -41,6 +44,25 @@ def _validate_type(schema_type: Type, val: Any) -> Optional[str]:
 
     (error_msg, type_validator) = _get_type_validator(schema_type)
     return error_msg if not type_validator(val) else None
+
+
+def _cast_to_schema_type(schema_type: Type, val: Any) -> Any:
+    if isinstance(val, schema_type):
+        return val
+
+    return _try_coerce(schema_type, type(val), val)
+
+
+def _try_coerce(schema_type: Type, type_: Type, val: Any) -> Any:
+    try:
+        if schema_type is date and type_ is str:
+            return date.fromisoformat(val)
+        if schema_type is datetime and type_ is str:
+            return datetime.fromisoformat(val)
+    except ValueError:
+        pass
+
+    return val
 
 
 def _get_type_validator(schema_type: Type) -> Tuple[str, TypeValidator]:
